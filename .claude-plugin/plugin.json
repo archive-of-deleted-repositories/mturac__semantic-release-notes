@@ -1,0 +1,19 @@
+{
+  "name": "semantic-release-notes",
+  "version": "0.1.0",
+  "author": {
+    "name": "mturac"
+  },
+  "description": "Auto-generate human-readable changelogs and release notes from conventional commits and PR titles.",
+  "skills": [
+    "skills/commit-parse",
+    "skills/release-draft",
+    "skills/changelog-update"
+  ],
+  "commands": [
+    "commands/release-notes.md",
+    "commands/release-draft.md",
+    "commands/changelog-update.md",
+    "commands/release-bump.md"
+  ]
+}

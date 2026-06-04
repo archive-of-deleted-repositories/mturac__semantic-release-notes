@@ -1,0 +1,91 @@
+name: Validate Plugin Structure
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check required plugin files
+        run: |
+          required=(
+            ".claude-plugin/plugin.json"
+            ".claude-plugin/marketplace.json"
+            "skills/commit-parse/SKILL.md"
+            "skills/release-draft/SKILL.md"
+            "skills/changelog-update/SKILL.md"
+            "commands/release-notes.md"
+            "commands/release-draft.md"
+            "commands/changelog-update.md"
+            "commands/release-bump.md"
+            "README.md"
+          )
+          missing=()
+          for f in "${required[@]}"; do
+            if [ ! -f "$f" ]; then
+              missing+=("$f")
+            fi
+          done
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "Missing required files:"
+            printf '  %s\n' "${missing[@]}"
+            exit 1
+          fi
+          echo "All required files present."
+
+      - name: Validate plugin.json
+        run: |
+          python3 - <<'EOF'
+          import json, sys
+          with open(".claude-plugin/plugin.json") as f:
+              p = json.load(f)
+          required_keys = ["name", "version", "author", "description", "skills", "commands"]
+          missing = [k for k in required_keys if k not in p]
+          if missing:
+              print(f"plugin.json missing keys: {missing}")
+              sys.exit(1)
+          if not isinstance(p["skills"], list) or not isinstance(p["commands"], list):
+              print("skills and commands must be arrays")
+              sys.exit(1)
+          print(f"plugin.json valid — {p['name']} v{p['version']}")
+          EOF
+
+      - name: Validate marketplace.json
+        run: |
+          python3 - <<'EOF'
+          import json, sys
+          with open(".claude-plugin/marketplace.json") as f:
+              m = json.load(f)
+          if "keywords" not in m or not isinstance(m["keywords"], list):
+              print("marketplace.json must have a keywords array")
+              sys.exit(1)
+          print(f"marketplace.json valid — {len(m['keywords'])} keywords")
+          EOF
+
+      - name: Check SKILL.md files are non-empty
+        run: |
+          for skill in skills/*/SKILL.md; do
+            size=$(wc -c < "$skill")
+            if [ "$size" -lt 100 ]; then
+              echo "SKILL.md too small ($size bytes): $skill"
+              exit 1
+            fi
+            echo "OK: $skill ($size bytes)"
+          done
+
+      - name: Check command files are non-empty
+        run: |
+          for cmd in commands/*.md; do
+            size=$(wc -c < "$cmd")
+            if [ "$size" -lt 50 ]; then
+              echo "Command file too small ($size bytes): $cmd"
+              exit 1
+            fi
+            echo "OK: $cmd ($size bytes)"
+          done
